@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Waiting Part Monitoring</title>
+  <title>Monitoring Waiting Part</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -54,8 +54,8 @@
           <i data-lucide="activity" class="w-6 h-6"></i>
         </div>
         <div>
-          <h1 class="text-xl font-bold tracking-tight">Logistik-FAD LMO</h1>
-          <p class="text-xs text-emerald-200">Presisi dan Akurasi &bull; Monitoring Orderan Waiting Part</p>
+          <h1 class="text-xl font-bold tracking-tight">Logistic-FAD LMO</h1>
+          <p class="text-xs text-emerald-200">Natural Power of Energy &bull; SAM Smart Asset Monitoring</p>
         </div>
       </div>
       
@@ -158,7 +158,7 @@
       <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4">
         <div class="flex items-center justify-between border-b border-slate-50 pb-2">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-            <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-600"></i> Distribusi Status
+            <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-600"></i> Status Orderan Aktif
           </h3>
           <span class="text-[10px] text-slate-400 font-medium">Real-time</span>
         </div>
@@ -944,7 +944,6 @@
       filterData();
     }
 
-    // === STREAMING_CHUNK: Filtering records based on active tab... ===
     // === FILTER & RENDER ENGINE ===
     function filterData() {
       const searchVal = document.getElementById("smartSearch").value.toLowerCase().trim();
@@ -1006,7 +1005,6 @@
       document.getElementById("kpiDelayed").innerText = delayed;
     }
 
-    // === STREAMING_CHUNK: Populating dynamic data table cells... ===
     function renderTable() {
       const tbody = document.getElementById("ordersTableBody");
       document.getElementById("recordSummary").innerText = `Menampilkan ${filteredOrdersList.length} dari ${ordersList.length} Transaksi Terdaftar`;
@@ -1234,10 +1232,14 @@
 
     // === CHART VISUALIZATION ===
     function renderStatusChart() {
-      const active = ordersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE" && o.calculated_status !== "RECEIVED_BY_MECHANIC").length;
-      const onSchedule = ordersList.filter(o => o.calculated_status !== "DELAYED" && o.calculated_status !== "ARRIVED_AT_SITE" && o.calculated_status !== "RECEIVED_BY_MECHANIC").length;
-      const delayed = ordersList.filter(o => o.calculated_status === "DELAYED").length;
-      const arrived = ordersList.filter(o => o.calculated_status === "ARRIVED_AT_SITE" || o.calculated_status === "RECEIVED_BY_MECHANIC").length;
+      const openStatuses = ["WAITING_QUOTATION", "WAITING_SUPPLY", "NO_PR", "NO_PO"];
+      const progressStatuses = ["PO_UNRELEASED", "IN_TRANSIT", "ARRIVED_AT_HUB"];
+
+      // Filter to ACTIVE orders only (exclude arrived history)
+      const activeOrders = ordersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE" && o.calculated_status !== "RECEIVED_BY_MECHANIC");
+
+      const totalOpen = activeOrders.filter(o => openStatuses.includes(o.current_status)).length;
+      const totalProgress = activeOrders.filter(o => progressStatuses.includes(o.current_status)).length;
 
       const ctx = document.getElementById("statusDistributionChart").getContext("2d");
 
@@ -1248,10 +1250,10 @@
       chartInstance = new Chart(ctx, {
         type: "doughnut",
         data: {
-          labels: ["On Schedule", "Delayed", "Arrived"],
+          labels: ["Open Status", "Progress Status"],
           datasets: [{
-            data: [onSchedule, delayed, arrived],
-            backgroundColor: ["#3b82f6", "#ef4444", "#10b981"],
+            data: [totalOpen, totalProgress],
+            backgroundColor: ["#f59e0b", "#3b82f6"],
             borderWidth: 2,
             borderColor: "#ffffff"
           }]
@@ -1273,7 +1275,6 @@
       });
     }
 
-    // === STREAMING_CHUNK: Displaying transactional logs and revision history... ===
     // === DETAIL & HISTORICAL REVISION MODAL ===
     function openDetailView(orderId) {
       const order = ordersList.find(o => o.id == orderId);
@@ -1434,7 +1435,6 @@
       document.getElementById("loginModal").classList.add("hidden");
     }
 
-    // === STREAMING_CHUNK: Processing authentications... ===
     function handleLoginSubmit(e) {
       e.preventDefault();
       const userVal = document.getElementById("loginUsername").value.trim();
@@ -1509,7 +1509,6 @@
       fetchData(true);
     }
 
-    // === STREAMING_CHUNK: Managing write and edit CRUD submissions... ===
     // === WRITE / EDIT OPERATIONS ===
     function openOrderModal() {
       if (!activeUser) {
