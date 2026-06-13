@@ -230,6 +230,18 @@
       <!-- MAIN TABLE SECTION & SEARCH FILTER -->
       <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col gap-6">
         
+        <!-- CUSTOM TABS SYSTEM (Active vs Arrived/History) -->
+        <div class="flex border-b border-slate-100">
+          <button id="tabActive" onclick="switchTab('active')" class="py-3 px-6 font-bold text-sm border-b-2 border-emerald-600 text-emerald-700 transition flex items-center gap-2">
+            <i data-lucide="clock" class="w-4 h-4"></i>
+            Monitor Aktif (<span id="countActive">0</span>)
+          </button>
+          <button id="tabCompleted" onclick="switchTab('completed')" class="py-3 px-6 font-bold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition flex items-center gap-2">
+            <i data-lucide="archive" class="w-4 h-4"></i>
+            History Pesanan Selesai (<span id="countCompleted">0</span>)
+          </button>
+        </div>
+
         <!-- Search bar, filter & CTA actions -->
         <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
           
@@ -240,12 +252,14 @@
 
           <div class="flex items-center gap-3">
             <select id="statusFilter" onchange="filterData()" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500/20 transition">
-              <option value="ALL">Semua Status</option>
-              <option value="ACTIVE">Semua Aktif (Belum Tiba)</option>
-              <option value="PO_ISSUED">PO Issued</option>
-              <option value="IN_TRANSIT">In Transit</option>
-              <option value="ARRIVED_AT_HUB">Arrived at Hub</option>
-              <option value="ARRIVED_AT_SITE">Arrived at Site (History)</option>
+              <option value="ALL">Semua Status Aktif</option>
+              <option value="WAITING_QUOTATION">Waiting Quotation</option>
+              <option value="WAITING_SUPPLY">Waiting Supply (Block Payment)</option>
+              <option value="NO_PR">Belum ada PR</option>
+              <option value="NO_PO">Belum ada PO</option>
+              <option value="PO_UNRELEASED">PO Belum Released</option>
+              <option value="IN_TRANSIT">In Transit (Perjalanan Pengiriman)</option>
+              <option value="ARRIVED_AT_HUB">Sampai di Hub Transit</option>
               <option value="DELAYED">Delayed Only 🔴</option>
             </select>
 
@@ -416,10 +430,15 @@
             <div>
               <label class="block text-xs font-bold text-slate-500 mb-2">Status Logistik Terkini*</label>
               <select id="formCurrentStatus" required class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
-                <option value="PO_ISSUED">PO Issued (Penyiapan Vendor)</option>
-                <option value="IN_TRANSIT">In Transit (Perjalanan Ekspedisi)</option>
-                <option value="ARRIVED_AT_HUB">Arrived at Hub (Transit Terdekat)</option>
-                <option value="ARRIVED_AT_SITE">Arrived at Site (Selesai/Diterima)</option>
+                <option value="WAITING_QUOTATION">Waiting Quotation</option>
+                <option value="WAITING_SUPPLY">Waiting Supply (Block Payment)</option>
+                <option value="NO_PR">Belum ada PR</option>
+                <option value="NO_PO">Belum ada PO</option>
+                <option value="PO_UNRELEASED">PO Belum Released</option>
+                <option value="IN_TRANSIT">In Transit (Perjalanan Pengiriman)</option>
+                <option value="ARRIVED_AT_HUB">Sampai di Hub Transit</option>
+                <option value="ARRIVED_AT_SITE">Sampai di Site</option>
+                <option value="RECEIVED_BY_MECHANIC">Sudah Diterima Mekanik</option>
               </select>
             </div>
           </div>
@@ -438,6 +457,10 @@
             <div class="md:col-span-1">
               <label class="block text-xs font-bold text-slate-500 mb-2">Estimasi Tanggal & Waktu Tiba (ETA)*</label>
               <input type="datetime-local" id="formCurrentEta" required class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+              <div class="mt-2 flex items-center gap-2">
+                <input type="checkbox" id="formEtaTba" onchange="toggleEtaTba()" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                <label for="formEtaTba" class="text-xs font-semibold text-slate-500 select-none">TBA / Belum bisa ditentukan</label>
+              </div>
             </div>
           </div>
           <div id="revisionReasonWrapper" class="hidden">
@@ -604,8 +627,8 @@
         shipping_channel: "Darat",
         resi_number: "BPN-SL-00921",
         order_date: "2026-06-08",
-        current_eta: "2026-06-12T17:00:00", // Past ETA to trigger "DELAYED" automatically
-        current_status: "IN_TRANSIT",
+        current_eta: "TBA", // Past TBA configuration
+        current_status: "WAITING_QUOTATION",
         notes: "Gigi transmisi macet di posisi rasio 3. Harus diturunkan total.",
         user_id: 1,
         created_at: "2026-06-08T09:00:00",
@@ -625,7 +648,7 @@
         resi_number: "SUB-MAS-5510",
         order_date: "2026-06-01",
         current_eta: "2026-06-25T12:00:00",
-        current_status: "PO_ISSUED",
+        current_status: "PO_UNRELEASED",
         notes: "Perbaikan rantai dozer karena korosi parah di area disposal.",
         user_id: 1,
         created_at: "2026-06-01T11:00:00",
@@ -645,7 +668,7 @@
         resi_number: "BPN-REG-43110",
         order_date: "2026-05-20",
         current_eta: "2026-06-10T11:00:00",
-        current_status: "ARRIVED_AT_SITE",
+        current_status: "RECEIVED_BY_MECHANIC",
         notes: "Pemeliharaan rutin pisau grader (cutting blade) aus.",
         user_id: 1,
         created_at: "2026-05-20T08:00:00",
@@ -672,6 +695,7 @@
     let chartInstance = null;
     let databaseMode = "demo"; // 'demo' or 'live'
     let liveApiEndpoint = "";
+    let activeTab = "active"; // Tab State: 'active' (All on queue) or 'completed' (Arrived)
 
     // === APP INITIATION ===
     window.onload = function() {
@@ -758,6 +782,25 @@
       localStorage.setItem("sam_live_api_url", url);
       showToast("Koneksi API Google Sheets disimpan.", "check", "bg-emerald-600");
       fetchData();
+    }
+
+    // === TABS NAVIGATION SWITCH ===
+    function switchTab(tab) {
+      activeTab = tab;
+      const tabActiveBtn = document.getElementById("tabActive");
+      const tabCompletedBtn = document.getElementById("tabCompleted");
+      const statusFilterSelect = document.getElementById("statusFilter");
+      
+      if (activeTab === "active") {
+        tabActiveBtn.className = "py-3 px-6 font-bold text-sm border-b-2 border-emerald-600 text-emerald-700 transition flex items-center gap-2";
+        tabCompletedBtn.className = "py-3 px-6 font-bold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition flex items-center gap-2";
+        statusFilterSelect.classList.remove("invisible");
+      } else {
+        tabActiveBtn.className = "py-3 px-6 font-bold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition flex items-center gap-2";
+        tabCompletedBtn.className = "py-3 px-6 font-bold text-sm border-b-2 border-emerald-600 text-emerald-700 transition flex items-center gap-2";
+        statusFilterSelect.classList.add("invisible");
+      }
+      filterData();
     }
 
     // === FETCH & PROCESS MONITORING DATA ===
@@ -860,12 +903,15 @@
       const now = new Date();
       
       ordersList = ordersList.map(order => {
-        const etaDate = new Date(order.current_eta);
         let dynamicStatus = order.current_status;
+        const isArrivedStatus = order.current_status === "ARRIVED_AT_SITE" || order.current_status === "RECEIVED_BY_MECHANIC";
         
-        // INTEGRITY RULE: NOW() > current_eta AND status != 'ARRIVED_AT_SITE' => DELAYED
-        if (now > etaDate && order.current_status !== "ARRIVED_AT_SITE") {
-          dynamicStatus = "DELAYED";
+        // INTEGRITY RULE: NOW() > current_eta AND status != arrived/received AND not TBA => DELAYED
+        if (order.current_eta && order.current_eta !== "TBA" && order.current_eta !== "") {
+          const etaDate = new Date(order.current_eta);
+          if (now > etaDate && !isArrivedStatus) {
+            dynamicStatus = "DELAYED";
+          }
         }
 
         // Deep-parse parts array if it comes as serialized string from spreadsheet
@@ -900,12 +946,24 @@
       filterData();
     }
 
+    // === STREAMING_CHUNK: Filtering records based on active tab... ===
     // === FILTER & RENDER ENGINE ===
     function filterData() {
       const searchVal = document.getElementById("smartSearch").value.toLowerCase().trim();
       const statusFilter = document.getElementById("statusFilter").value;
 
+      // Update counters dynamically
+      const activeTotal = ordersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE" && o.calculated_status !== "RECEIVED_BY_MECHANIC").length;
+      const completedTotal = ordersList.filter(o => o.calculated_status === "ARRIVED_AT_SITE" || o.calculated_status === "RECEIVED_BY_MECHANIC").length;
+      document.getElementById("countActive").innerText = activeTotal;
+      document.getElementById("countCompleted").innerText = completedTotal;
+
       filteredOrdersList = ordersList.filter(order => {
+        // Tab Filtering: active (All queues) vs completed (History)
+        const isCompletedStatus = order.calculated_status === "ARRIVED_AT_SITE" || order.calculated_status === "RECEIVED_BY_MECHANIC";
+        if (activeTab === "active" && isCompletedStatus) return false;
+        if (activeTab === "completed" && !isCompletedStatus) return false;
+
         // Smart Search matches Unit ID, Part Number, PO Number, Part Description, or Notes
         let matchesPartSearch = false;
         if (order.parts && Array.isArray(order.parts)) {
@@ -921,11 +979,9 @@
           (order.notes && order.notes.toLowerCase().includes(searchVal)) ||
           matchesPartSearch;
 
-        // Filter by Status selection
+        // Dropdown Status Filter (only relevant when on 'active' tab view)
         let matchStatus = true;
-        if (statusFilter === "ACTIVE") {
-          matchStatus = order.calculated_status !== "ARRIVED_AT_SITE";
-        } else if (statusFilter !== "ALL") {
+        if (activeTab === "active" && statusFilter !== "ALL") {
           matchStatus = order.calculated_status === statusFilter;
         }
 
@@ -938,10 +994,10 @@
     }
 
     function renderKPIs() {
-      const totalActive = ordersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE").length;
-      const onSchedule = ordersList.filter(o => o.calculated_status !== "DELAYED" && o.calculated_status !== "ARRIVED_AT_SITE").length;
+      const totalActive = ordersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE" && o.calculated_status !== "RECEIVED_BY_MECHANIC").length;
+      const onSchedule = ordersList.filter(o => o.calculated_status !== "DELAYED" && o.calculated_status !== "ARRIVED_AT_SITE" && o.calculated_status !== "RECEIVED_BY_MECHANIC").length;
       const delayed = ordersList.filter(o => o.calculated_status === "DELAYED").length;
-      const arrived = ordersList.filter(o => o.calculated_status === "ARRIVED_AT_SITE").length;
+      const arrived = ordersList.filter(o => o.calculated_status === "ARRIVED_AT_SITE" || o.calculated_status === "RECEIVED_BY_MECHANIC").length;
 
       document.getElementById("kpiActiveOrders").innerText = totalActive;
       document.getElementById("kpiOnSchedule").innerText = onSchedule;
@@ -949,6 +1005,7 @@
       document.getElementById("kpiCompleted").innerText = arrived;
     }
 
+    // === STREAMING_CHUNK: Populating dynamic data table cells... ===
     function renderTable() {
       const tbody = document.getElementById("ordersTableBody");
       document.getElementById("recordSummary").innerText = `Menampilkan ${filteredOrdersList.length} dari ${ordersList.length} Transaksi Terdaftar`;
@@ -995,7 +1052,11 @@
 
         // Format dates nicely
         const orderDateFormatted = order.order_date ? new Date(order.order_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' }) : "-";
-        const etaDateFormatted = order.current_eta ? new Date(order.current_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : "-";
+        
+        let etaDateFormatted = "TBA / Belum ditentukan";
+        if (order.current_eta && order.current_eta !== "TBA" && order.current_eta !== "") {
+          etaDateFormatted = new Date(order.current_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }
 
         // Calculate countdown timer
         const countdownHtml = getCountdownHtml(order.current_eta, order.calculated_status);
@@ -1017,20 +1078,35 @@
           partsPreviewHtml = `<span class="text-slate-400 italic text-xs">Belum ada part diinput</span>`;
         }
 
-        // Status Badge
+        // Status Badge Mapping
         let statusBadge = "";
         switch (order.calculated_status) {
-          case "PO_ISSUED":
-            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="file-text"></i> PO Issued</span>`;
+          case "WAITING_QUOTATION":
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="clock"></i> Waiting Quotation</span>`;
+            break;
+          case "WAITING_SUPPLY":
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="alert-circle"></i> Waiting Supply</span>`;
+            break;
+          case "NO_PR":
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="file-x"></i> Belum ada PR</span>`;
+            break;
+          case "NO_PO":
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-rose-800 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="file-warning"></i> Belum ada PO</span>`;
+            break;
+          case "PO_UNRELEASED":
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="file-lock"></i> PO Belum Released</span>`;
             break;
           case "IN_TRANSIT":
-            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="truck"></i> In Transit</span>`;
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="truck"></i> In Transit</span>`;
             break;
           case "ARRIVED_AT_HUB":
             statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-purple-600 bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="map-pin"></i> At Hub</span>`;
             break;
           case "ARRIVED_AT_SITE":
-            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="check"></i> Arrived</span>`;
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="check"></i> Arrived Site</span>`;
+            break;
+          case "RECEIVED_BY_MECHANIC":
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="user-check"></i> Diterima Mekanik</span>`;
             break;
           case "DELAYED":
             statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-extrabold text-red-600 bg-red-100 border border-red-300 px-2 py-0.5 rounded-md"><i class="w-3 h-3 animate-bounce" data-lucide="clock"></i> DELAYED</span>`;
@@ -1080,8 +1156,8 @@
     }
 
     function getCountdownHtml(etaString, currentStatus) {
-      if (!etaString) return `<p class="text-xs text-slate-300">Estimasi tidak diatur</p>`;
-      if (currentStatus === "ARRIVED_AT_SITE") return `<p class="text-xs text-emerald-600 font-semibold">Tiba Tepat Waktu</p>`;
+      if (!etaString || etaString === "TBA" || etaString === "") return `<p class="text-xs text-slate-400 italic">TBA / Belum ditentukan</p>`;
+      if (currentStatus === "ARRIVED_AT_SITE" || currentStatus === "RECEIVED_BY_MECHANIC") return `<p class="text-xs text-emerald-600 font-semibold">Selesai / Diterima</p>`;
 
       const now = new Date();
       const eta = new Date(etaString);
@@ -1098,6 +1174,20 @@
         const leftDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
         const leftHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         return `<p class="text-xs text-slate-500 font-medium">Sisa ${leftDays > 0 ? `${leftDays} Hari ` : ""}${leftHours} Jam</p>`;
+      }
+    }
+
+    // === TOGGLE ETA TBA ===
+    function toggleEtaTba() {
+      const isTba = document.getElementById("formEtaTba").checked;
+      const etaInput = document.getElementById("formCurrentEta");
+      if (isTba) {
+        etaInput.value = "";
+        etaInput.disabled = true;
+        etaInput.removeAttribute("required");
+      } else {
+        etaInput.disabled = false;
+        etaInput.setAttribute("required", "required");
       }
     }
 
@@ -1132,7 +1222,6 @@
       lucide.createIcons();
     }
 
-    // (Code remains identical below for rendering logic, auth flow, layout aesthetics)
     function removePartRow(btn) {
       const rows = document.querySelectorAll(".part-item-row");
       if (rows.length <= 1) {
@@ -1144,10 +1233,10 @@
 
     // === CHART VISUALIZATION ===
     function renderStatusChart() {
-      const active = ordersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE").length;
-      const onSchedule = ordersList.filter(o => o.calculated_status !== "DELAYED" && o.calculated_status !== "ARRIVED_AT_SITE").length;
+      const active = ordersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE" && o.calculated_status !== "RECEIVED_BY_MECHANIC").length;
+      const onSchedule = ordersList.filter(o => o.calculated_status !== "DELAYED" && o.calculated_status !== "ARRIVED_AT_SITE" && o.calculated_status !== "RECEIVED_BY_MECHANIC").length;
       const delayed = ordersList.filter(o => o.calculated_status === "DELAYED").length;
-      const arrived = ordersList.filter(o => o.calculated_status === "ARRIVED_AT_SITE").length;
+      const arrived = ordersList.filter(o => o.calculated_status === "ARRIVED_AT_SITE" || o.calculated_status === "RECEIVED_BY_MECHANIC").length;
 
       const ctx = document.getElementById("statusDistributionChart").getContext("2d");
 
@@ -1183,6 +1272,7 @@
       });
     }
 
+    // === STREAMING_CHUNK: Displaying transactional logs and revision history... ===
     // === DETAIL & HISTORICAL REVISION MODAL ===
     function openDetailView(orderId) {
       const order = ordersList.find(o => o.id == orderId);
@@ -1215,7 +1305,12 @@
       document.getElementById("detailPoVendor").innerText = `${order.po_number || "Belum Terbit PO"} - ${order.vendor_name || "Supplier belum ditentukan"}`;
       document.getElementById("detailLogistics").innerText = `${order.shipping_channel || "Menunggu Kurir"} (${order.resi_number || "Tanpa Resi"})`;
       document.getElementById("detailOrderDate").innerText = order.order_date ? new Date(order.order_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) : "-";
-      document.getElementById("detailEta").innerText = order.current_eta ? new Date(order.current_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "-";
+      
+      let detailEtaText = "TBA / Belum ditentukan";
+      if (order.current_eta && order.current_eta !== "TBA" && order.current_eta !== "") {
+        detailEtaText = new Date(order.current_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      }
+      document.getElementById("detailEta").innerText = detailEtaText;
 
       // Design dynamic Alert Box inside detail modal
       const alertBox = document.getElementById("detailAlertBox");
@@ -1227,12 +1322,12 @@
       if (order.calculated_status === "DELAYED") {
         alertBox.className = "p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-red-50 border border-red-200 text-red-900";
         statusVal.innerText = "🚨 DELAYED (MELEWATI ETA)";
-      } else if (order.calculated_status === "ARRIVED_AT_SITE") {
+      } else if (order.calculated_status === "ARRIVED_AT_SITE" || order.calculated_status === "RECEIVED_BY_MECHANIC") {
         alertBox.className = "p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-900";
-        statusVal.innerText = "✅ ARRIVED (Tiba di Lokasi)";
+        statusVal.innerText = `✅ ${order.calculated_status.replace(/_/g, " ")}`;
       } else {
         alertBox.className = "p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-blue-50 border border-blue-200 text-blue-900";
-        statusVal.innerText = `📦 ${order.calculated_status.replace("_", " ")}`;
+        statusVal.innerText = `📦 ${order.calculated_status.replace(/_/g, " ")}`;
       }
 
       // Fetch Revision history logs
@@ -1266,8 +1361,8 @@
     }
 
     function getCountdownTextOnly(etaString, currentStatus) {
-      if (!etaString) return "Estimasi tidak diatur";
-      if (currentStatus === "ARRIVED_AT_SITE") return "Sudah Diterima";
+      if (!etaString || etaString === "TBA" || etaString === "") return "TBA / Belum ditentukan";
+      if (currentStatus === "ARRIVED_AT_SITE" || currentStatus === "RECEIVED_BY_MECHANIC") return "Sudah Diterima / Selesai";
 
       const now = new Date();
       const eta = new Date(etaString);
@@ -1303,8 +1398,8 @@
         const div = document.createElement("div");
         div.className = "relative pl-6 border-l-2 border-amber-300 text-xs space-y-1";
         
-        const prevDate = new Date(h.previous_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-        const revisedDate = new Date(h.revised_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const prevDate = h.previous_eta && h.previous_eta !== "TBA" ? new Date(h.previous_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : "TBA";
+        const revisedDate = h.revised_eta && h.revised_eta !== "TBA" ? new Date(h.revised_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : "TBA";
         const recordDate = new Date(h.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' });
 
         div.innerHTML = `
@@ -1338,6 +1433,7 @@
       document.getElementById("loginModal").classList.add("hidden");
     }
 
+    // === STREAMING_CHUNK: Processing authentications... ===
     function handleLoginSubmit(e) {
       e.preventDefault();
       const userVal = document.getElementById("loginUsername").value.trim();
@@ -1412,6 +1508,7 @@
       fetchData(true);
     }
 
+    // === STREAMING_CHUNK: Managing write and edit CRUD submissions... ===
     // === WRITE / EDIT OPERATIONS ===
     function openOrderModal() {
       if (!activeUser) {
@@ -1431,6 +1528,8 @@
       // Default dates
       document.getElementById("formOrderDate").value = new Date().toISOString().slice(0, 10);
       document.getElementById("formCurrentEta").value = "";
+      document.getElementById("formEtaTba").checked = false;
+      toggleEtaTba();
 
       document.getElementById("revisionReasonWrapper").classList.add("hidden");
       document.getElementById("formRevisionReason").removeAttribute("required");
@@ -1479,11 +1578,13 @@
       document.getElementById("formResiNumber").value = order.resi_number || "";
       document.getElementById("formCurrentStatus").value = order.current_status;
       
-      if (order.current_eta) {
-        // format datetime-local input
-        document.getElementById("formCurrentEta").value = new Date(order.current_eta).toISOString().slice(0, 16);
+      if (order.current_eta === "TBA" || !order.current_eta || order.current_eta === "") {
+        document.getElementById("formEtaTba").checked = true;
+        toggleEtaTba();
       } else {
-        document.getElementById("formCurrentEta").value = "";
+        document.getElementById("formEtaTba").checked = false;
+        toggleEtaTba();
+        document.getElementById("formCurrentEta").value = new Date(order.current_eta).toISOString().slice(0, 16);
       }
 
       document.getElementById("revisionReasonWrapper").classList.add("hidden");
@@ -1522,6 +1623,9 @@
         return;
       }
 
+      const isTba = document.getElementById("formEtaTba").checked;
+      const currentEtaValue = isTba ? "TBA" : document.getElementById("formCurrentEta").value;
+
       // Legacy fallback attributes for backwards sheet compatibility
       const primaryPart = partsArray[0];
 
@@ -1545,7 +1649,7 @@
         shipping_channel: document.getElementById("formShippingChannel").value,
         resi_number: document.getElementById("formResiNumber").value.toUpperCase().trim(),
         current_status: document.getElementById("formCurrentStatus").value,
-        current_eta: document.getElementById("formCurrentEta").value
+        current_eta: currentEtaValue
       };
 
       if (databaseMode === "demo") {
@@ -1663,13 +1767,16 @@
       exportText += `  Tanggal Cetak: ${new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}\n`;
       exportText += `=======================================\n\n`;
 
-      const activeParts = filteredOrdersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE");
+      const activeParts = filteredOrdersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE" && o.calculated_status !== "RECEIVED_BY_MECHANIC");
       
       if (activeParts.length === 0) {
         exportText += `Tidak ada pengiriman part aktif yang terdaftar dalam daftar saringan saat ini.`;
       } else {
         activeParts.forEach((o, index) => {
-          const etaDate = new Date(o.current_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' });
+          let etaDate = "TBA";
+          if (o.current_eta && o.current_eta !== "TBA") {
+            etaDate = new Date(o.current_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' });
+          }
           const statusTxt = o.calculated_status === "DELAYED" ? "TERLAMBAT (DELAYED)" : o.calculated_status;
           exportText += `${index + 1}. Unit: ${o.unit_id} (${o.model_unit})\n`;
           if (o.parts && o.parts.length > 0) {
