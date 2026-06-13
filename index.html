@@ -811,7 +811,12 @@
           headers: { "Content-Type": "text/plain" },
           body: JSON.stringify({ action: "get_active_orders" })
         })
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP Error Status: ${res.status}`);
+          }
+          return res.json();
+        })
         .then(res => {
           if (res.status === "success") {
             ordersList = res.data;
@@ -823,7 +828,26 @@
         })
         .catch(err => {
           console.error("API error:", err);
-          showToast("Koneksi gagal ke API Google Sheets.", "alert-triangle", "bg-rose-600");
+          showToast("Koneksi gagal ke API Google Sheets. Periksa deployment Apps Script Anda.", "alert-triangle", "bg-rose-600");
+          
+          document.getElementById("ordersTableBody").innerHTML = `
+            <tr>
+              <td colspan="7" class="py-12 text-center text-slate-400">
+                <div class="flex flex-col items-center gap-2 p-4 max-w-md mx-auto">
+                  <i data-lucide="cloud-off" class="w-10 h-10 text-rose-500"></i>
+                  <p class="font-bold text-slate-700">Koneksi Live Gagal</p>
+                  <p class="text-xs text-slate-400 leading-relaxed">
+                    Browser memblokir permintaan atau Apps Script mengembalikan error. 
+                    Pastikan Anda telah meng-copy file <b>Code.gs</b> terbaru tanpa fungsi <i>addHeader</i> dan men-deploy-nya ulang sebagai <b>Anyone</b>.
+                  </p>
+                  <button onclick="fetchData()" class="mt-2 py-1.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Coba Hubungkan Kembali
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+          lucide.createIcons();
         })
         .finally(() => {
           if (rfIcon) rfIcon.classList.remove("animate-spin");
@@ -1108,6 +1132,7 @@
       lucide.createIcons();
     }
 
+    // (Code remains identical below for rendering logic, auth flow, layout aesthetics)
     function removePartRow(btn) {
       const rows = document.querySelectorAll(".part-item-row");
       if (rows.length <= 1) {
