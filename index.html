@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monitoring - Waiting Part</title>
+  <title>Waiting Part Monitoring</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -54,8 +54,8 @@
           <i data-lucide="activity" class="w-6 h-6"></i>
         </div>
         <div>
-          <h1 class="text-xl font-bold tracking-tight">Logistic-LMO</h1>
-          <p class="text-xs text-emerald-200">Presisi dan Akurasi &bull;Monitoring Order Waiting Part</p>
+          <h1 class="text-xl font-bold tracking-tight">Logistik-FAD LMO</h1>
+          <p class="text-xs text-emerald-200">Presisi dan Akurasi &bull; Monitoring Orderan Waiting Part</p>
         </div>
       </div>
       
@@ -181,47 +181,45 @@
             <i data-lucide="package" class="w-6 h-6"></i>
           </div>
           <div>
-            <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Active Orders</p>
+            <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Orderan Aktif</p>
             <h3 id="kpiActiveOrders" class="text-xl lg:text-2xl font-extrabold text-slate-800 mt-0.5">0</h3>
-            <p class="text-[10px] text-slate-400">Sedang diproses</p>
+            <p class="text-[10px] text-slate-400">Dalam antrean monitor</p>
           </div>
         </div>
 
-        <!-- CARD 2: ON SCHEDULE -->
+        <!-- CARD 2: OPEN STATUSES -->
         <div class="bg-white p-4 lg:p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition">
-          <div class="p-3 bg-blue-50 rounded-xl text-blue-600">
-            <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+          <div class="p-3 bg-amber-50 rounded-xl text-amber-600">
+            <i data-lucide="folder-open" class="w-6 h-6"></i>
           </div>
           <div>
-            <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">On Schedule</p>
-            <h3 id="kpiOnSchedule" class="text-xl lg:text-2xl font-extrabold text-slate-800 mt-0.5">0</h3>
-            <p class="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5">
-              <i data-lucide="trending-up" class="w-3 h-3"></i> Aman
-            </p>
+            <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Orderan Open</p>
+            <h3 id="kpiOpenOrders" class="text-xl lg:text-2xl font-extrabold text-slate-800 mt-0.5">0</h3>
+            <p class="text-[10px] text-amber-600 font-medium">Quotation/PR/PO awal</p>
           </div>
         </div>
 
-        <!-- CARD 3: DELAYED -->
+        <!-- CARD 3: IN PROGRESS STATUSES -->
+        <div class="bg-white p-4 lg:p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition">
+          <div class="p-3 bg-blue-50 rounded-xl text-blue-600">
+            <i data-lucide="truck" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Orderan Progress</p>
+            <h3 id="kpiProgressOrders" class="text-xl lg:text-2xl font-extrabold text-slate-800 mt-0.5">0</h3>
+            <p class="text-[10px] text-blue-600 font-medium">Dalam jalur pengiriman</p>
+          </div>
+        </div>
+
+        <!-- CARD 4: DELAYED -->
         <div class="bg-white p-4 lg:p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition">
           <div class="p-3 bg-rose-50 rounded-xl text-rose-600">
             <i data-lucide="alert-triangle" class="w-6 h-6"></i>
           </div>
           <div>
-            <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Delayed</p>
+            <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Terlambat</p>
             <h3 id="kpiDelayed" class="text-xl lg:text-2xl font-extrabold text-slate-800 mt-0.5">0</h3>
-            <p class="text-[10px] text-rose-500 font-medium">Membutuhkan revisi</p>
-          </div>
-        </div>
-
-        <!-- CARD 4: COMPLETED (ARRIVED) -->
-        <div class="bg-white p-4 lg:p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition">
-          <div class="p-3 bg-amber-50 rounded-xl text-amber-600">
-            <i data-lucide="archive" class="w-6 h-6"></i>
-          </div>
-          <div>
-            <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Arrived at Site</p>
-            <h3 id="kpiCompleted" class="text-xl lg:text-2xl font-extrabold text-slate-800 mt-0.5">0</h3>
-            <p class="text-[10px] text-slate-400">Order diselesaikan</p>
+            <p class="text-[10px] text-rose-500 font-medium">Melewati estimasi ETA</p>
           </div>
         </div>
 
@@ -994,15 +992,18 @@
     }
 
     function renderKPIs() {
+      const openStatuses = ["WAITING_QUOTATION", "WAITING_SUPPLY", "NO_PR", "NO_PO"];
+      const progressStatuses = ["PO_UNRELEASED", "IN_TRANSIT", "ARRIVED_AT_HUB", "ARRIVED_AT_SITE", "RECEIVED_BY_MECHANIC"];
+
       const totalActive = ordersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE" && o.calculated_status !== "RECEIVED_BY_MECHANIC").length;
-      const onSchedule = ordersList.filter(o => o.calculated_status !== "DELAYED" && o.calculated_status !== "ARRIVED_AT_SITE" && o.calculated_status !== "RECEIVED_BY_MECHANIC").length;
+      const totalOpen = ordersList.filter(o => openStatuses.includes(o.current_status)).length;
+      const totalProgress = ordersList.filter(o => progressStatuses.includes(o.current_status)).length;
       const delayed = ordersList.filter(o => o.calculated_status === "DELAYED").length;
-      const arrived = ordersList.filter(o => o.calculated_status === "ARRIVED_AT_SITE" || o.calculated_status === "RECEIVED_BY_MECHANIC").length;
 
       document.getElementById("kpiActiveOrders").innerText = totalActive;
-      document.getElementById("kpiOnSchedule").innerText = onSchedule;
+      document.getElementById("kpiOpenOrders").innerText = totalOpen;
+      document.getElementById("kpiProgressOrders").innerText = totalProgress;
       document.getElementById("kpiDelayed").innerText = delayed;
-      document.getElementById("kpiCompleted").innerText = arrived;
     }
 
     // === STREAMING_CHUNK: Populating dynamic data table cells... ===
