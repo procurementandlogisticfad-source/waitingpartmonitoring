@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAM - Smart Asset Monitoring - Waiting Part Module</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons (Untuk icon dashboard yang modern dan tipis) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js (Untuk Pie Chart Daily Energy/Parts Cost & Tren Carbon Footprint/Breakdown) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    @keyframes pulse-red {
+      0%, 100% { background-color: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); }
+      50% { background-color: rgba(239, 68, 68, 0.25); border-color: rgba(239, 68, 68, 0.8); }
+    }
+    .animate-pulse-red {
+      animation: pulse-red 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-[#eef5f1] min-h-screen text-slate-800 transition-all duration-300">
+
+  <!-- TOP DECORATION HEADER -->
+  <header class="bg-[#126e51] text-white py-3 px-6 shadow-md">
+    <div class="max-w-[1600px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-emerald-500 rounded-lg text-white">
+          <i data-lucide="activity" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight">NowEnergy</h1>
+          <p class="text-xs text-emerald-200">Natural Power of Energy &bull; SAM Smart Asset Monitoring</p>
+        </div>
+      </div>
+      
+      <!-- API Source Toggle -->
+      <div class="flex items-center gap-3 bg-[#0c503b] py-1.5 px-3 rounded-full border border-emerald-700 text-xs">
+        <span class="font-medium text-emerald-200">Mode Database:</span>
+        <select id="dbModeSelect" onchange="toggleDatabaseMode()" class="bg-[#126e51] text-white border-none rounded px-2 py-0.5 focus:ring-1 focus:ring-emerald-400 outline-none">
+          <option value="demo">Demo Mode (Mock Data / Offline)</option>
+          <option value="live">Live Mode (Google Apps Script API)</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER WRAPPER -->
+  <main class="max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- LEFT SIDEBAR: Navigasi & Sisi Admin (Control Room) -->
+    <aside class="lg:col-span-3 flex flex-col gap-6">
+      
+      <!-- USER CONTROL PANEL -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="shield-alert" class="w-5 h-5 text-emerald-600"></i>
+            Akses Pengguna
+          </h2>
+          <span id="roleBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+            Viewer Only
+          </span>
+        </div>
+        
+        <!-- User Welcome / Login Trigger -->
+        <div id="authContainer" class="pt-2">
+          <!-- Anonymous / Viewer Screen -->
+          <div id="viewerState" class="space-y-3">
+            <p class="text-xs text-slate-500 leading-relaxed">
+              Anda masuk sebagai <b>Viewer</b>. Akses input dan edit data khusus hanya diizinkan untuk Tim Logistics Control Room.
+            </p>
+            <button onclick="openLoginModal()" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-sm shadow-emerald-200">
+              <i data-lucide="log-in" class="w-4 h-4"></i>
+              Login Control Room (Editor)
+            </button>
+          </div>
+          
+          <!-- Editor Active State -->
+          <div id="editorState" class="hidden space-y-4">
+            <div class="bg-emerald-50 p-3.5 rounded-xl border border-emerald-100 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold">
+                CR
+              </div>
+              <div class="overflow-hidden">
+                <p class="text-xs text-emerald-600 font-bold uppercase tracking-wider">Logistics Admin</p>
+                <p id="activeUserName" class="text-sm font-semibold text-slate-800 truncate">Suryanto Pratama</p>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="openOrderModal()" class="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition duration-150 flex items-center justify-center gap-1.5">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> Add Order
+              </button>
+              <button onclick="handleLogout()" class="py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg border border-red-100 transition duration-150 flex items-center justify-center gap-1.5">
+                <i data-lucide="log-out" class="w-4 h-4"></i> Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONFIGURATION LIVE API (Showed only on Live Mode Selection) -->
+      <div id="apiConfigCard" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hidden flex-col gap-3">
+        <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+          <i data-lucide="sliders" class="w-4 h-4 text-emerald-600"></i> API Endpoint Config
+        </h3>
+        <p class="text-xs text-slate-400">Hubungkan dasbor ini dengan Google Apps Script Web App URL Anda.</p>
+        <input id="apiEndpointUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition">
+        <button onclick="saveApiConfig()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition">Simpan & Hubungkan</button>
+      </div>
+
+      <!-- STATIC ENERGY STORAGE & MODE ASSETS (Reference Styling) -->
+      <div class="bg-gradient-to-br from-amber-500 to-orange-600 p-6 rounded-3xl text-white shadow-lg relative overflow-hidden">
+        <div class="absolute -right-12 -bottom-12 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
+        <div class="relative z-10 flex flex-col gap-4">
+          <span class="text-[10px] bg-white/20 border border-white/30 text-white font-bold tracking-wider px-2.5 py-1 rounded-full uppercase w-max">Active Mode</span>
+          <div>
+            <h3 class="text-lg font-bold">Best Logistics Route</h3>
+            <p class="text-xs text-orange-100 mt-1 leading-relaxed">Sistem monitor menyarankan prioritas rute udara untuk suku cadang berkategori URGENT demi menjaga efisiensi.</p>
+          </div>
+          <div class="bg-white/10 rounded-2xl p-3 flex items-center gap-3 border border-white/15">
+            <i data-lucide="plane" class="w-6 h-6 text-white"></i>
+            <div>
+              <p class="text-xs text-white/80">Rata-rata ETA Udara</p>
+              <p class="text-sm font-bold">1 Hari 4 Jam</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DONUT CHART: ESTIMASI STATUS BARANG -->
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4">
+        <div class="flex items-center justify-between border-b border-slate-50 pb-2">
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+            <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-600"></i> Distribusi Status
+          </h3>
+          <span class="text-[10px] text-slate-400 font-medium">Real-time</span>
+        </div>
+        <div class="relative w-full h-[180px] flex items-center justify-center">
+          <canvas id="statusDistributionChart"></canvas>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- RIGHT SECTION: Dashboard KPI Cards, List Data, and Interactive Table -->
+    <section class="lg:col-span-9 flex flex-col gap-6">
+
+      <!-- BANNER & STATUS SUMMARY CARDS -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        
+        <!-- CARD 1: TOTAL ACTIVE ORDERS -->
+        <div class="bg-white p-4 lg:p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition">
+          <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600">
+            <i data-lucide="package" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Active Orders</p>
+            <h3 id="kpiActiveOrders" class="text-xl lg:text-2xl font-extrabold text-slate-800 mt-0.5">0</h3>
+            <p class="text-[10px] text-slate-400">Sedang diproses</p>
+          </div>
+        </div>
+
+        <!-- CARD 2: ON SCHEDULE -->
+        <div class="bg-white p-4 lg:p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition">
+          <div class="p-3 bg-blue-50 rounded-xl text-blue-600">
+            <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">On Schedule</p>
+            <h3 id="kpiOnSchedule" class="text-xl lg:text-2xl font-extrabold text-slate-800 mt-0.5">0</h3>
+            <p class="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5">
+              <i data-lucide="trending-up" class="w-3 h-3"></i> Aman
+            </p>
+          </div>
+        </div>
+
+        <!-- CARD 3: DELAYED -->
+        <div class="bg-white p-4 lg:p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition">
+          <div class="p-3 bg-rose-50 rounded-xl text-rose-600">
+            <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Delayed</p>
+            <h3 id="kpiDelayed" class="text-xl lg:text-2xl font-extrabold text-slate-800 mt-0.5">0</h3>
+            <p class="text-[10px] text-rose-500 font-medium">Membutuhkan revisi</p>
+          </div>
+        </div>
+
+        <!-- CARD 4: COMPLETED (ARRIVED) -->
+        <div class="bg-white p-4 lg:p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition">
+          <div class="p-3 bg-amber-50 rounded-xl text-amber-600">
+            <i data-lucide="archive" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Arrived at Site</p>
+            <h3 id="kpiCompleted" class="text-xl lg:text-2xl font-extrabold text-slate-800 mt-0.5">0</h3>
+            <p class="text-[10px] text-slate-400">Order diselesaikan</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- MAIN TABLE SECTION & SEARCH FILTER -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col gap-6">
+        
+        <!-- Search bar, filter & CTA actions -->
+        <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+          
+          <div class="flex-1 relative">
+            <i data-lucide="search" class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input id="smartSearch" type="text" oninput="filterData()" placeholder="Pencarian Pintar (Ketik Unit ID, Part No, No. PO atau Keterangan...)" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition duration-150">
+          </div>
+
+          <div class="flex items-center gap-3">
+            <select id="statusFilter" onchange="filterData()" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500/20 transition">
+              <option value="ALL">Semua Status</option>
+              <option value="ACTIVE">Semua Aktif (Belum Tiba)</option>
+              <option value="PO_ISSUED">PO Issued</option>
+              <option value="IN_TRANSIT">In Transit</option>
+              <option value="ARRIVED_AT_HUB">Arrived at Hub</option>
+              <option value="ARRIVED_AT_SITE">Arrived at Site (History)</option>
+              <option value="DELAYED">Delayed Only 🔴</option>
+            </select>
+
+            <button onclick="exportToCleanText()" class="px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-sm rounded-xl transition duration-150 flex items-center gap-2">
+              <i data-lucide="share-2" class="w-4 h-4"></i> Export Text (Bahan Meeting)
+            </button>
+            
+            <button onclick="fetchData()" class="p-3 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-600 transition" title="Refresh Data">
+              <i data-lucide="refresh-cw" class="w-4 h-4" id="refreshIcon"></i>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- RESPONSIVE DATA TABLE CONTAINER -->
+        <div class="overflow-x-auto custom-scrollbar border border-slate-100 rounded-2xl">
+          <table class="w-full text-left border-collapse min-w-[1000px]">
+            <thead>
+              <tr class="bg-slate-50/70 border-b border-slate-100 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                <th class="py-4 px-4 text-center w-[100px]">Prioritas</th>
+                <th class="py-4 px-4 w-[180px]">Unit Detail</th>
+                <th class="py-4 px-4 w-[350px]">Daftar Suku Cadang</th>
+                <th class="py-4 px-4 w-[250px]">Keterangan Tambahan</th>
+                <th class="py-4 px-4 w-[150px]">Estimasi ETA</th>
+                <th class="py-4 px-4 w-[180px]">Sisa Waktu / Status</th>
+                <th class="py-4 px-4 text-center w-[100px]">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTableBody" class="divide-y divide-slate-100 text-sm">
+              <!-- Dynamically populated -->
+              <tr>
+                <td colspan="7" class="py-12 text-center text-slate-400">
+                  <div class="flex flex-col items-center gap-2">
+                    <i data-lucide="loader-2" class="w-8 h-8 animate-spin text-emerald-600"></i>
+                    <p class="font-medium text-xs">Memuat data monitoring logistik...</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- TABLE PAGINATION / RECORD TOTALS -->
+        <div class="flex justify-between items-center text-xs text-slate-400 font-medium">
+          <p>Sistem otomatis diperbarui secara lokal setiap 5 menit (Auto-refresh).</p>
+          <p id="recordSummary">Menampilkan 0 dari 0 Transaksi Terdaftar</p>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ==================== MODALS SECTION ==================== -->
+
+  <!-- LOGIN MODAL -->
+  <div id="loginModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-100 animate-slide-up">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="lock" class="w-5 h-5 text-emerald-600"></i>
+          Otentikasi Operator
+        </h3>
+        <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Username</label>
+          <input type="text" id="loginUsername" required placeholder="Contoh: admin" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kata Sandi</label>
+          <input type="password" id="loginPassword" required placeholder="Contoh: admin123" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+        </div>
+        <div id="loginError" class="text-xs text-red-600 font-medium hidden"></div>
+        <button type="submit" class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-sm transition flex items-center justify-center gap-2 shadow-md shadow-emerald-100">
+          Masuk & Ambil Hak Akses
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ORDER FORM MODAL (Add / Edit) -->
+  <div id="orderModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-100 custom-scrollbar animate-slide-up">
+      <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+        <h3 id="modalTitle" class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="plus-circle" class="w-5 h-5 text-emerald-600"></i>
+          Tambah Order Baru (Control Room)
+        </h3>
+        <button onclick="closeOrderModal()" class="text-slate-400 hover:text-slate-600 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      
+      <form id="orderForm" onsubmit="handleOrderSubmit(event)" class="space-y-6">
+        <input type="hidden" id="formOrderId">
+        
+        <!-- SECTION 1: FIELD ASSET / UNIT -->
+        <div class="bg-slate-50 p-4 rounded-2xl space-y-4">
+          <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+            <i data-lucide="truck" class="w-3.5 h-3.5"></i> Informasi Unit Operasional (Breakdown)
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Unit ID (Kode Lambung)*</label>
+              <input type="text" id="formUnitId" required placeholder="Contoh: EXCA-01" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Model / Tipe Unit*</label>
+              <input type="text" id="formModelUnit" required placeholder="Contoh: Komatsu PC200" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-2">Keterangan / Catatan Tambahan (Misal: Gejala Kerusakan, Lokasi Lapangan)</label>
+            <textarea id="formNotes" placeholder="Masukkan keterangan tambahan atau catatan lapangan di sini..." rows="2" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"></textarea>
+          </div>
+        </div>
+
+        <!-- SECTION 2: DYNAMIC MULTIPLE SPARE PARTS -->
+        <div class="bg-emerald-50/50 p-5 rounded-2xl space-y-4 border border-emerald-100/60">
+          <div class="flex justify-between items-center">
+            <h4 class="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="settings" class="w-4 h-4 text-emerald-600"></i> Daftar Kebutuhan Suku Cadang (Spare Parts)
+            </h4>
+            <button type="button" onclick="addPartRow()" class="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i> Tambah Item Part
+            </button>
+          </div>
+          
+          <!-- Dynamic Parts Container -->
+          <div id="partsContainer" class="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+            <!-- Dynamic part rows injected here -->
+          </div>
+        </div>
+
+        <!-- SECTION 3: FIELD LOGISTICS INFO -->
+        <div class="bg-slate-50 p-4 rounded-2xl space-y-4">
+          <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+            <i data-lucide="package" class="w-3.5 h-3.5"></i> Administrasi & Pelacakan Logistik
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Nomor Purchase Order (PO)</label>
+              <input type="text" id="formPoNumber" placeholder="Contoh: PO-2026/06/899" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Nama Vendor / Supplier</label>
+              <input type="text" id="formVendorName" placeholder="Contoh: United Tractors" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Jalur Pengiriman</label>
+              <select id="formShippingChannel" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+                <option value="Udara">Udara (Cargo Flight)</option>
+                <option value="Darat">Darat (Trucking/Express)</option>
+                <option value="Laut">Laut (Pelayaran Kargo)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Nomor Resi / AWB</label>
+              <input type="text" id="formResiNumber" placeholder="Contoh: CGK-90033100" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Status Logistik Terkini*</label>
+              <select id="formCurrentStatus" required class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+                <option value="PO_ISSUED">PO Issued (Penyiapan Vendor)</option>
+                <option value="IN_TRANSIT">In Transit (Perjalanan Ekspedisi)</option>
+                <option value="ARRIVED_AT_HUB">Arrived at Hub (Transit Terdekat)</option>
+                <option value="ARRIVED_AT_SITE">Arrived at Site (Selesai/Diterima)</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-1">
+              <label class="block text-xs font-bold text-slate-500 mb-2">Prioritas Penanganan*</label>
+              <select id="formPriority" required class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+                <option value="NORMAL">NORMAL (Standard Logistics)</option>
+                <option value="URGENT">URGENT (Breakdown Asset)</option>
+              </select>
+            </div>
+            <div class="md:col-span-1">
+              <label class="block text-xs font-bold text-slate-500 mb-2">Tanggal Order Pemesanan</label>
+              <input type="date" id="formOrderDate" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+            </div>
+            <div class="md:col-span-1">
+              <label class="block text-xs font-bold text-slate-500 mb-2">Estimasi Tanggal & Waktu Tiba (ETA)*</label>
+              <input type="datetime-local" id="formCurrentEta" required class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+            </div>
+          </div>
+          <div id="revisionReasonWrapper" class="hidden">
+            <label class="block text-xs font-bold text-amber-600 mb-2">Justifikasi Perubahan/Revisi ETA*</label>
+            <input type="text" id="formRevisionReason" placeholder="Wajib diisi: contoh, Cuaca buruk di laut" class="w-full p-2.5 border border-amber-300 bg-amber-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 text-amber-900 transition">
+          </div>
+        </div>
+
+        <!-- FOOTER BUTTONS -->
+        <div class="flex justify-end gap-3 border-t border-slate-100 pt-4">
+          <button type="button" onclick="closeOrderModal()" class="py-2.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">Batal</button>
+          <button type="submit" class="py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition flex items-center gap-1.5 shadow-md shadow-emerald-100">
+            <i data-lucide="save" class="w-4 h-4"></i> Simpan Data Pelacakan
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ORDER DETAIL & REVISION HISTORY DIALOG -->
+  <div id="detailModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-3xl w-full max-w-2xl p-6 shadow-2xl border border-slate-100 animate-slide-up max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+        <div>
+          <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="eye" class="w-5 h-5 text-emerald-600"></i>
+            Detail Pelacakan Suku Cadang
+          </h3>
+          <p id="detailSubtitle" class="text-xs text-slate-400 mt-0.5">ID Pelacakan: --</p>
+        </div>
+        <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-6">
+        
+        <!-- Status & Countdown Tracker -->
+        <div id="detailAlertBox" class="p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <p id="detailLabelStatus" class="text-xs font-bold uppercase tracking-wider text-slate-500">Status</p>
+            <h4 id="detailValueStatus" class="text-lg font-extrabold text-slate-800">MEMUAT STATUS...</h4>
+          </div>
+          <div class="text-left sm:text-right">
+            <p class="text-xs font-semibold text-slate-500">Waktu Kedatangan</p>
+            <p id="detailValueCountdown" class="text-sm font-bold text-slate-800">--</p>
+          </div>
+        </div>
+
+        <!-- Detail Data Grid -->
+        <div class="grid grid-cols-2 gap-y-4 gap-x-6 text-sm border-b border-slate-100 pb-5">
+          <div>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Unit ID (Kode Alat)</p>
+            <p id="detailUnitId" class="font-semibold text-slate-800 mt-1">--</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Model / Tipe Alat</p>
+            <p id="detailModelUnit" class="font-semibold text-slate-800 mt-1">--</p>
+          </div>
+          <div class="col-span-2">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Keterangan / Catatan Tambahan</p>
+            <p id="detailNotes" class="font-semibold text-slate-700 mt-1 bg-slate-50 p-2.5 rounded-lg border border-slate-100">--</p>
+          </div>
+          <div class="col-span-2">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daftar Kebutuhan Suku Cadang</p>
+            <div class="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/50 p-2">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="text-slate-400 uppercase font-bold border-b border-slate-200/60 pb-1">
+                    <th class="p-2">Part Number</th>
+                    <th class="p-2">Deskripsi Suku Cadang</th>
+                    <th class="p-2 text-center">QTY</th>
+                  </tr>
+                </thead>
+                <tbody id="detailPartsTableBody">
+                  <!-- Dynamically populated parts -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Nomor PO & Vendor</p>
+            <p id="detailPoVendor" class="font-semibold text-slate-800 mt-1">--</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Jalur Logistik & Resi/AWB</p>
+            <p id="detailLogistics" class="font-semibold text-slate-800 mt-1">--</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tanggal Dipesan</p>
+            <p id="detailOrderDate" class="font-semibold text-slate-800 mt-1">--</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Estimasi Tiba (ETA)</p>
+            <p id="detailEta" class="font-semibold text-slate-800 mt-1">--</p>
+          </div>
+        </div>
+
+        <!-- ETA Revision History Timeline -->
+        <div>
+          <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <i data-lucide="history" class="w-4 h-4 text-emerald-600"></i> Riwayat Perubahan & Revisi ETA
+          </h4>
+          <div id="historyTimeline" class="space-y-4 max-h-[160px] overflow-y-auto custom-scrollbar pr-2">
+            <!-- Dynamically populated or 'Belum ada riwayat revisi' -->
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex justify-end pt-3">
+          <button onclick="closeDetailModal()" class="py-2.5 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">Tutup</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING SYSTEM FEEDBACK NOTIFICATION -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 bg-slate-850 text-slate-800 py-3 px-5 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-100 opacity-0 transform translate-y-12 transition-all duration-300 z-50 pointer-events-none">
+    <div id="toastIconBg" class="p-1.5 rounded-lg text-white">
+      <i id="toastIcon" data-lucide="info" class="w-4 h-4"></i>
+    </div>
+    <div class="text-sm font-semibold" id="toastMessage">Sistem diperbarui.</div>
+  </div>
+
+  <!-- APPLICATION JAVASCRIPT CODE -->
+  <script>
+    // === MOCK / INITIAL DEMO DATA WITH NEW ARRAY PARTS STRUCTURE ===
+    const mockOrders = [
+      {
+        id: 1,
+        unit_id: "EXCA-01",
+        model_unit: "Komatsu PC200",
+        parts: [
+          { part_number: "708-2L-00300", part_description: "Hydraulic Pump Cylinder", qty: 1 },
+          { part_number: "07000-12012", part_description: "O-Ring Seal Kit", qty: 4 }
+        ],
+        priority: "URGENT",
+        po_number: "PO-2026/06/102",
+        vendor_name: "United Tractors TBK",
+        shipping_channel: "Udara",
+        resi_number: "CGK-TXT-90088",
+        order_date: "2026-06-05",
+        current_eta: "2026-06-15T10:00:00",
+        current_status: "IN_TRANSIT",
+        notes: "Kebocoran oli parah pada boom cylinder kanan. Membutuhkan penggantian seal kit dan silinder utama.",
+        user_id: 1,
+        created_at: "2026-06-05T14:00:00",
+        updated_at: "2026-06-05T14:00:00"
+      },
+      {
+        id: 2,
+        unit_id: "DT-102",
+        model_unit: "CAT 777D Heavy Duty",
+        parts: [
+          { part_number: "CAT-331-900", part_description: "Transmission Gearbox Shaft Assembly", qty: 2 },
+          { part_number: "CAT-552-110", part_description: "Thrust Bearing", qty: 2 },
+          { part_number: "CAT-099-221", part_description: "Gasket Transmission Cover", qty: 1 }
+        ],
+        priority: "URGENT",
+        po_number: "PO-2026/06/105",
+        vendor_name: "Trakindo Utama",
+        shipping_channel: "Darat",
+        resi_number: "BPN-SL-00921",
+        order_date: "2026-06-08",
+        current_eta: "2026-06-12T17:00:00", // Past ETA to trigger "DELAYED" automatically
+        current_status: "IN_TRANSIT",
+        notes: "Gigi transmisi macet di posisi rasio 3. Harus diturunkan total.",
+        user_id: 1,
+        created_at: "2026-06-08T09:00:00",
+        updated_at: "2026-06-08T09:00:00"
+      },
+      {
+        id: 3,
+        unit_id: "DOZ-15",
+        model_unit: "Komatsu D155A-6",
+        parts: [
+          { part_number: "195-27-31210", part_description: "Track Link Assembly", qty: 10 }
+        ],
+        priority: "NORMAL",
+        po_number: "PO-2026/06/088",
+        vendor_name: "Sumitomo Suku Cadang",
+        shipping_channel: "Laut",
+        resi_number: "SUB-MAS-5510",
+        order_date: "2026-06-01",
+        current_eta: "2026-06-25T12:00:00",
+        current_status: "PO_ISSUED",
+        notes: "Perbaikan rantai dozer karena korosi parah di area disposal.",
+        user_id: 1,
+        created_at: "2026-06-01T11:00:00",
+        updated_at: "2026-06-01T11:00:00"
+      },
+      {
+        id: 4,
+        unit_id: "GRD-04",
+        model_unit: "CAT 140M Motor Grader",
+        parts: [
+          { part_number: "CAT-443-122", part_description: "Cutting Edge Blade 14ft", qty: 4 }
+        ],
+        priority: "NORMAL",
+        po_number: "PO-2026/05/441",
+        vendor_name: "Trakindo Utama",
+        shipping_channel: "Darat",
+        resi_number: "BPN-REG-43110",
+        order_date: "2026-05-20",
+        current_eta: "2026-06-10T11:00:00",
+        current_status: "ARRIVED_AT_SITE",
+        notes: "Pemeliharaan rutin pisau grader (cutting blade) aus.",
+        user_id: 1,
+        created_at: "2026-05-20T08:00:00",
+        updated_at: "2026-06-10T11:00:00"
+      }
+    ];
+
+    const mockHistory = [
+      {
+        id: 1,
+        order_id: 2,
+        previous_eta: "2026-06-11T17:00:00",
+        revised_eta: "2026-06-12T17:00:00",
+        revision_reason: "Keterlambatan armada transit penyeberangan feri di pelabuhan Kariangau.",
+        user_id: 1,
+        created_at: "2026-06-11T18:00:00"
+      }
+    ];
+
+    // === APPLICATION STATE ===
+    let ordersList = [];
+    let filteredOrdersList = [];
+    let activeUser = null;
+    let chartInstance = null;
+    let databaseMode = "demo"; // 'demo' or 'live'
+    let liveApiEndpoint = "";
+
+    // === APP INITIATION ===
+    window.onload = function() {
+      // Load settings from localStorage
+      const savedMode = localStorage.getItem("sam_db_mode");
+      if (savedMode) {
+        databaseMode = savedMode;
+        document.getElementById("dbModeSelect").value = databaseMode;
+      }
+      
+      const savedEndpoint = localStorage.getItem("sam_live_api_url");
+      if (savedEndpoint) {
+        liveApiEndpoint = savedEndpoint;
+        document.getElementById("apiEndpointUrl").value = liveApiEndpoint;
+      }
+
+      const savedUser = localStorage.getItem("sam_active_user");
+      if (savedUser) {
+        activeUser = JSON.parse(savedUser);
+        updateUserUI();
+      }
+
+      // Initialize icon lucide
+      lucide.createIcons();
+
+      // Setup UI Database Mode View
+      toggleDatabaseModeUI();
+
+      // Load Data
+      fetchData();
+
+      // Setup Auto-refresh (Every 5 minutes = 300,000 ms)
+      setInterval(() => {
+        fetchData(true);
+      }, 300000);
+
+      // Listener dynamic inputs for revision rationale field validation
+      document.getElementById("formCurrentEta").addEventListener("change", function(e) {
+        const formId = document.getElementById("formOrderId").value;
+        if (!formId) return; // Only trigger on Edit mode
+        
+        const originalOrder = ordersList.find(o => o.id == formId);
+        if (originalOrder) {
+          const originalEtaStr = originalOrder.current_eta ? new Date(originalOrder.current_eta).toISOString().slice(0, 16) : "";
+          const newEtaStr = e.target.value;
+          
+          if (originalEtaStr && originalEtaStr !== newEtaStr) {
+            document.getElementById("revisionReasonWrapper").classList.remove("hidden");
+            document.getElementById("formRevisionReason").setAttribute("required", "required");
+          } else {
+            document.getElementById("revisionReasonWrapper").classList.add("hidden");
+            document.getElementById("formRevisionReason").removeAttribute("required");
+          }
+        }
+      });
+    }
+
+    // === TOOGLE DATABASE MODE ===
+    function toggleDatabaseMode() {
+      databaseMode = document.getElementById("dbModeSelect").value;
+      localStorage.setItem("sam_db_mode", databaseMode);
+      toggleDatabaseModeUI();
+      fetchData();
+    }
+
+    function toggleDatabaseModeUI() {
+      const apiConfigCard = document.getElementById("apiConfigCard");
+      if (databaseMode === "live") {
+        apiConfigCard.classList.remove("hidden");
+        apiConfigCard.classList.add("flex");
+      } else {
+        apiConfigCard.classList.remove("flex");
+        apiConfigCard.classList.add("hidden");
+      }
+    }
+
+    function saveApiConfig() {
+      const url = document.getElementById("apiEndpointUrl").value.trim();
+      if (!url) {
+        showToast("Masukan URL endpoint API Google Apps Script yang valid.", "alert-triangle", "bg-rose-500");
+        return;
+      }
+      liveApiEndpoint = url;
+      localStorage.setItem("sam_live_api_url", url);
+      showToast("Koneksi API Google Sheets disimpan.", "check", "bg-emerald-600");
+      fetchData();
+    }
+
+    // === FETCH & PROCESS MONITORING DATA ===
+    function fetchData(isSilent = false) {
+      if (!isSilent) {
+        const tbody = document.getElementById("ordersTableBody");
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-12 text-center text-slate-400">
+              <div class="flex flex-col items-center gap-2">
+                <i data-lucide="loader-2" class="w-8 h-8 animate-spin text-emerald-600"></i>
+                <p class="font-medium text-xs">Memperbarui data monitoring...</p>
+              </div>
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
+      }
+
+      // Add rotation animation to refresh icon
+      const rfIcon = document.getElementById("refreshIcon");
+      if (rfIcon) rfIcon.classList.add("animate-spin");
+
+      if (databaseMode === "demo") {
+        // Load offline mock data
+        setTimeout(() => {
+          ordersList = JSON.parse(JSON.stringify(mockOrders)); // deep clone
+          processLoadedData();
+          if (rfIcon) rfIcon.classList.remove("animate-spin");
+          if (!isSilent) showToast("Menggunakan Basis Data Demo (Offline)", "info", "bg-indigo-600");
+        }, 600);
+      } else {
+        // Live Fetch to Google Spreadsheet Web App
+        if (!liveApiEndpoint) {
+          if (rfIcon) rfIcon.classList.remove("animate-spin");
+          showToast("Atur dan Simpan URL API Google Sheets terlebih dahulu.", "alert-triangle", "bg-rose-500");
+          document.getElementById("ordersTableBody").innerHTML = `
+            <tr>
+              <td colspan="7" class="py-8 text-center text-slate-400">
+                <p class="font-bold text-slate-600">Jalur Live Mode Aktif</p>
+                <p class="text-xs text-slate-400 mt-1">Harap isi URL API Web App Google Sheets di menu pengaturan panel kiri.</p>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        fetch(liveApiEndpoint, {
+          method: "POST",
+          mode: "cors",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ action: "get_active_orders" })
+        })
+        .then(res => res.json())
+        .then(res => {
+          if (res.status === "success") {
+            ordersList = res.data;
+            processLoadedData();
+            if (!isSilent) showToast("Sinkronisasi database awan berhasil.", "check", "bg-emerald-600");
+          } else {
+            showToast("Gagal menyinkronkan data: " + res.message, "x-circle", "bg-rose-600");
+          }
+        })
+        .catch(err => {
+          console.error("API error:", err);
+          showToast("Koneksi gagal ke API Google Sheets.", "alert-triangle", "bg-rose-600");
+        })
+        .finally(() => {
+          if (rfIcon) rfIcon.classList.remove("animate-spin");
+        });
+      }
+    }
+
+    function processLoadedData() {
+      // Process status calculation (DELAYED check)
+      const now = new Date();
+      
+      ordersList = ordersList.map(order => {
+        const etaDate = new Date(order.current_eta);
+        let dynamicStatus = order.current_status;
+        
+        // INTEGRITY RULE: NOW() > current_eta AND status != 'ARRIVED_AT_SITE' => DELAYED
+        if (now > etaDate && order.current_status !== "ARRIVED_AT_SITE") {
+          dynamicStatus = "DELAYED";
+        }
+
+        // Deep-parse parts array if it comes as serialized string from spreadsheet
+        let parsedParts = [];
+        if (order.parts) {
+          try {
+            parsedParts = typeof order.parts === 'string' ? JSON.parse(order.parts) : order.parts;
+          } catch (e) {
+            // fallback if it was individual legacy column format
+            parsedParts = [{
+              part_number: order.part_number || "",
+              part_description: order.part_description || "",
+              qty: order.qty || 1
+            }];
+          }
+        } else {
+          // fallback
+          parsedParts = [{
+            part_number: order.part_number || "",
+            part_description: order.part_description || "",
+            qty: order.qty || 1
+          }];
+        }
+        
+        return {
+          ...order,
+          parts: parsedParts,
+          calculated_status: dynamicStatus
+        };
+      });
+
+      filterData();
+    }
+
+    // === FILTER & RENDER ENGINE ===
+    function filterData() {
+      const searchVal = document.getElementById("smartSearch").value.toLowerCase().trim();
+      const statusFilter = document.getElementById("statusFilter").value;
+
+      filteredOrdersList = ordersList.filter(order => {
+        // Smart Search matches Unit ID, Part Number, PO Number, Part Description, or Notes
+        let matchesPartSearch = false;
+        if (order.parts && Array.isArray(order.parts)) {
+          matchesPartSearch = order.parts.some(p => 
+            (p.part_number && p.part_number.toLowerCase().includes(searchVal)) ||
+            (p.part_description && p.part_description.toLowerCase().includes(searchVal))
+          );
+        }
+
+        const matchSearch = 
+          (order.unit_id && order.unit_id.toLowerCase().includes(searchVal)) ||
+          (order.po_number && order.po_number.toLowerCase().includes(searchVal)) ||
+          (order.notes && order.notes.toLowerCase().includes(searchVal)) ||
+          matchesPartSearch;
+
+        // Filter by Status selection
+        let matchStatus = true;
+        if (statusFilter === "ACTIVE") {
+          matchStatus = order.calculated_status !== "ARRIVED_AT_SITE";
+        } else if (statusFilter !== "ALL") {
+          matchStatus = order.calculated_status === statusFilter;
+        }
+
+        return matchSearch && matchStatus;
+      });
+
+      renderKPIs();
+      renderTable();
+      renderStatusChart();
+    }
+
+    function renderKPIs() {
+      const totalActive = ordersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE").length;
+      const onSchedule = ordersList.filter(o => o.calculated_status !== "DELAYED" && o.calculated_status !== "ARRIVED_AT_SITE").length;
+      const delayed = ordersList.filter(o => o.calculated_status === "DELAYED").length;
+      const arrived = ordersList.filter(o => o.calculated_status === "ARRIVED_AT_SITE").length;
+
+      document.getElementById("kpiActiveOrders").innerText = totalActive;
+      document.getElementById("kpiOnSchedule").innerText = onSchedule;
+      document.getElementById("kpiDelayed").innerText = delayed;
+      document.getElementById("kpiCompleted").innerText = arrived;
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("ordersTableBody");
+      document.getElementById("recordSummary").innerText = `Menampilkan ${filteredOrdersList.length} dari ${ordersList.length} Transaksi Terdaftar`;
+
+      if (filteredOrdersList.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-12 text-center text-slate-400">
+              <div class="flex flex-col items-center gap-1">
+                <i data-lucide="package-open" class="w-8 h-8 text-slate-300"></i>
+                <p class="font-bold text-slate-600">Tidak ada pengiriman terdaftar</p>
+                <p class="text-xs">Ubah parameter pencarian atau saring status lainnya.</p>
+              </div>
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      tbody.innerHTML = "";
+      
+      // Sorted by priority (URGENT first)
+      const sortedList = [...filteredOrdersList].sort((a, b) => {
+        if (a.priority === "URGENT" && b.priority !== "URGENT") return -1;
+        if (a.priority !== "URGENT" && b.priority === "URGENT") return 1;
+        return 0;
+      });
+
+      sortedList.forEach(order => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50/50 transition cursor-pointer";
+        
+        // Handle Delayed blinking styling
+        const isDelayed = order.calculated_status === "DELAYED";
+        if (isDelayed) {
+          tr.className += " animate-pulse-red";
+        }
+
+        // Priority Badge
+        const priorityBadge = order.priority === "URGENT" 
+          ? `<span class="px-2.5 py-1 text-[10px] font-extrabold bg-red-100 text-red-700 border border-red-200 rounded-full">URGENT</span>`
+          : `<span class="px-2.5 py-1 text-[10px] font-extrabold bg-slate-100 text-slate-600 rounded-full">NORMAL</span>`;
+
+        // Format dates nicely
+        const orderDateFormatted = order.order_date ? new Date(order.order_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' }) : "-";
+        const etaDateFormatted = order.current_eta ? new Date(order.current_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : "-";
+
+        // Calculate countdown timer
+        const countdownHtml = getCountdownHtml(order.current_eta, order.calculated_status);
+
+        // Build Multi-Part dynamic text preview
+        let partsPreviewHtml = "";
+        if (order.parts && Array.isArray(order.parts) && order.parts.length > 0) {
+          partsPreviewHtml = `<div class="space-y-1.5">`;
+          order.parts.forEach(p => {
+            partsPreviewHtml += `
+              <div class="flex items-start gap-1.5 text-xs text-slate-700 font-medium">
+                <span class="font-mono text-[10px] bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded leading-none mt-0.5">${p.part_number}</span>
+                <span class="truncate max-w-[200px]">${p.part_description} <b class="text-emerald-600 ml-1">x${p.qty}</b></span>
+              </div>
+            `;
+          });
+          partsPreviewHtml += `</div>`;
+        } else {
+          partsPreviewHtml = `<span class="text-slate-400 italic text-xs">Belum ada part diinput</span>`;
+        }
+
+        // Status Badge
+        let statusBadge = "";
+        switch (order.calculated_status) {
+          case "PO_ISSUED":
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="file-text"></i> PO Issued</span>`;
+            break;
+          case "IN_TRANSIT":
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="truck"></i> In Transit</span>`;
+            break;
+          case "ARRIVED_AT_HUB":
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-purple-600 bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="map-pin"></i> At Hub</span>`;
+            break;
+          case "ARRIVED_AT_SITE":
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md"><i class="w-3 h-3" data-lucide="check"></i> Arrived</span>`;
+            break;
+          case "DELAYED":
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-extrabold text-red-600 bg-red-100 border border-red-300 px-2 py-0.5 rounded-md"><i class="w-3 h-3 animate-bounce" data-lucide="clock"></i> DELAYED</span>`;
+            break;
+        }
+
+        tr.innerHTML = `
+          <td class="py-4 px-4 text-center select-none" onclick="openDetailView(${order.id})">${priorityBadge}</td>
+          <td class="py-4 px-4" onclick="openDetailView(${order.id})">
+            <div class="font-bold text-slate-800">${order.unit_id}</div>
+            <div class="text-xs text-slate-400 mt-0.5">${order.model_unit}</div>
+          </td>
+          <td class="py-4 px-4" onclick="openDetailView(${order.id})">
+            ${partsPreviewHtml}
+          </td>
+          <td class="py-4 px-4" onclick="openDetailView(${order.id})">
+            <div class="text-xs text-slate-600 max-w-[240px] truncate" title="${order.notes || ''}">
+              ${order.notes ? order.notes : '<span class="text-slate-300 italic">Tidak ada keterangan tambahan</span>'}
+            </div>
+          </td>
+          <td class="py-4 px-4" onclick="openDetailView(${order.id})">
+            <div class="font-semibold text-slate-800">${etaDateFormatted}</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">Dipesan: ${orderDateFormatted}</div>
+          </td>
+          <td class="py-4 px-4" onclick="openDetailView(${order.id})">
+            <div class="mb-1">${statusBadge}</div>
+            ${countdownHtml}
+          </td>
+          <td class="py-4 px-4">
+            <div class="flex items-center justify-center gap-1.5">
+              <button onclick="copyTrackingLink(${order.id}, event)" class="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Copy Tautan Pelacakan">
+                <i data-lucide="copy" class="w-4 h-4"></i>
+              </button>
+              ${activeUser ? `
+                <button onclick="openEditOrder(${order.id}, event)" class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit Order">
+                  <i data-lucide="edit" class="w-4 h-4"></i>
+                </button>
+              ` : ''}
+            </div>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      lucide.createIcons();
+    }
+
+    function getCountdownHtml(etaString, currentStatus) {
+      if (!etaString) return `<p class="text-xs text-slate-300">Estimasi tidak diatur</p>`;
+      if (currentStatus === "ARRIVED_AT_SITE") return `<p class="text-xs text-emerald-600 font-semibold">Tiba Tepat Waktu</p>`;
+
+      const now = new Date();
+      const eta = new Date(etaString);
+      const diffMs = eta - now;
+
+      if (diffMs < 0) {
+        // Late / Delayed
+        const lateMs = Math.abs(diffMs);
+        const lateDays = Math.floor(lateMs / (1000 * 60 * 60 * 24));
+        const lateHours = Math.floor((lateMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        return `<p class="text-xs font-bold text-rose-600 flex items-center gap-0.5"><i class="w-3.5 h-3.5" data-lucide="alert-circle"></i> Terlambat ${lateDays > 0 ? `${lateDays}h ` : ""}${lateHours}j</p>`;
+      } else {
+        // Safe Countdown
+        const leftDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const leftHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        return `<p class="text-xs text-slate-500 font-medium">Sisa ${leftDays > 0 ? `${leftDays} Hari ` : ""}${leftHours} Jam</p>`;
+      }
+    }
+
+    // === DYNAMIC INPUT MULTI-PARTS MANAGER ===
+    function clearPartRows() {
+      document.getElementById("partsContainer").innerHTML = "";
+    }
+
+    function addPartRow(partNumber = "", partDescription = "", qty = 1) {
+      const container = document.getElementById("partsContainer");
+      const div = document.createElement("div");
+      div.className = "part-item-row grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm relative pr-10";
+      
+      div.innerHTML = `
+        <div class="md:col-span-3">
+          <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Part Number*</label>
+          <input type="text" name="part_number" required value="${partNumber}" placeholder="Contoh: 708-2L-00300" class="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+        </div>
+        <div class="md:col-span-7">
+          <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Deskripsi Suku Cadang*</label>
+          <input type="text" name="part_description" required value="${partDescription}" placeholder="Contoh: Hydraulic Pump Cylinder" class="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Qty*</label>
+          <input type="number" name="part_qty" required min="1" value="${qty}" class="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition">
+        </div>
+        <button type="button" onclick="removePartRow(this)" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Hapus Part">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      `;
+      container.appendChild(div);
+      lucide.createIcons();
+    }
+
+    function removePartRow(btn) {
+      const rows = document.querySelectorAll(".part-item-row");
+      if (rows.length <= 1) {
+        showToast("Pesanan wajib memiliki minimal 1 item suku cadang.", "alert-triangle", "bg-rose-500");
+        return;
+      }
+      btn.closest(".part-item-row").remove();
+    }
+
+    // === CHART VISUALIZATION ===
+    function renderStatusChart() {
+      const active = ordersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE").length;
+      const onSchedule = ordersList.filter(o => o.calculated_status !== "DELAYED" && o.calculated_status !== "ARRIVED_AT_SITE").length;
+      const delayed = ordersList.filter(o => o.calculated_status === "DELAYED").length;
+      const arrived = ordersList.filter(o => o.calculated_status === "ARRIVED_AT_SITE").length;
+
+      const ctx = document.getElementById("statusDistributionChart").getContext("2d");
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["On Schedule", "Delayed", "Arrived"],
+          datasets: [{
+            data: [onSchedule, delayed, arrived],
+            backgroundColor: ["#3b82f6", "#ef4444", "#10b981"],
+            borderWidth: 2,
+            borderColor: "#ffffff"
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                boxWidth: 12,
+                font: { family: "Plus Jakarta Sans", size: 10 }
+              }
+            }
+          },
+          cutout: "70%"
+        }
+      });
+    }
+
+    // === DETAIL & HISTORICAL REVISION MODAL ===
+    function openDetailView(orderId) {
+      const order = ordersList.find(o => o.id == orderId);
+      if (!order) return;
+
+      document.getElementById("detailSubtitle").innerText = `ID Pelacakan Transaksi: #${order.id}`;
+      document.getElementById("detailUnitId").innerText = order.unit_id;
+      document.getElementById("detailModelUnit").innerText = order.model_unit;
+      document.getElementById("detailNotes").innerText = order.notes ? order.notes : "Tidak ada keterangan tambahan.";
+      
+      // Render the multiple parts list inside detail dialog
+      const tbodyParts = document.getElementById("detailPartsTableBody");
+      tbodyParts.innerHTML = "";
+      if (order.parts && order.parts.length > 0) {
+        order.parts.forEach(p => {
+          const tr = document.createElement("tr");
+          tr.className = "border-b border-slate-100 hover:bg-slate-50 transition";
+          tr.innerHTML = `
+            <td class="p-2 font-mono font-bold text-slate-600">${p.part_number}</td>
+            <td class="p-2 text-slate-800 font-semibold">${p.part_description}</td>
+            <td class="p-2 text-center text-slate-700 font-bold bg-slate-50">${p.qty}</td>
+          `;
+          tbodyParts.appendChild(tr);
+        });
+      } else {
+        tbodyParts.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400 italic">Tidak ada rincian suku cadang.</td></tr>`;
+      }
+
+      // Display Logistics Information inside Detail
+      document.getElementById("detailPoVendor").innerText = `${order.po_number || "Belum Terbit PO"} - ${order.vendor_name || "Supplier belum ditentukan"}`;
+      document.getElementById("detailLogistics").innerText = `${order.shipping_channel || "Menunggu Kurir"} (${order.resi_number || "Tanpa Resi"})`;
+      document.getElementById("detailOrderDate").innerText = order.order_date ? new Date(order.order_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) : "-";
+      document.getElementById("detailEta").innerText = order.current_eta ? new Date(order.current_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "-";
+
+      // Design dynamic Alert Box inside detail modal
+      const alertBox = document.getElementById("detailAlertBox");
+      const countdownVal = document.getElementById("detailValueCountdown");
+      const statusVal = document.getElementById("detailValueStatus");
+
+      countdownVal.innerText = getCountdownTextOnly(order.current_eta, order.calculated_status);
+
+      if (order.calculated_status === "DELAYED") {
+        alertBox.className = "p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-red-50 border border-red-200 text-red-900";
+        statusVal.innerText = "🚨 DELAYED (MELEWATI ETA)";
+      } else if (order.calculated_status === "ARRIVED_AT_SITE") {
+        alertBox.className = "p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-900";
+        statusVal.innerText = "✅ ARRIVED (Tiba di Lokasi)";
+      } else {
+        alertBox.className = "p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-blue-50 border border-blue-200 text-blue-900";
+        statusVal.innerText = `📦 ${order.calculated_status.replace("_", " ")}`;
+      }
+
+      // Fetch Revision history logs
+      const historyTimeline = document.getElementById("historyTimeline");
+      historyTimeline.innerHTML = `<p class="text-xs text-slate-400">Sedang memuat riwayat revisi...</p>`;
+
+      if (databaseMode === "demo") {
+        const histories = mockHistory.filter(h => h.order_id == orderId);
+        renderTimeline(histories);
+      } else {
+        fetch(liveApiEndpoint, {
+          method: "POST",
+          mode: "cors",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ action: "get_eta_history", order_id: orderId, token: "AUTHORIZED_SAM_SESSION" })
+        })
+        .then(res => res.json())
+        .then(res => {
+          if (res.status === "success") {
+            renderTimeline(res.data);
+          } else {
+            historyTimeline.innerHTML = `<p class="text-xs text-rose-500">Gagal memuat riwayat.</p>`;
+          }
+        })
+        .catch(() => {
+          historyTimeline.innerHTML = `<p class="text-xs text-rose-500">Gangguan koneksi riwayat.</p>`;
+        });
+      }
+
+      document.getElementById("detailModal").classList.remove("hidden");
+    }
+
+    function getCountdownTextOnly(etaString, currentStatus) {
+      if (!etaString) return "Estimasi tidak diatur";
+      if (currentStatus === "ARRIVED_AT_SITE") return "Sudah Diterima";
+
+      const now = new Date();
+      const eta = new Date(etaString);
+      const diffMs = eta - now;
+
+      if (diffMs < 0) {
+        const lateMs = Math.abs(diffMs);
+        const lateDays = Math.floor(lateMs / (1000 * 60 * 60 * 24));
+        const lateHours = Math.floor((lateMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        return `Lambat ${lateDays > 0 ? `${lateDays}h ` : ""}${lateHours}j`;
+      } else {
+        const leftDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const leftHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        return `Sisa ${leftDays > 0 ? `${leftDays} Hari ` : ""}${leftHours} Jam`;
+      }
+    }
+
+    function renderTimeline(histories) {
+      const historyTimeline = document.getElementById("historyTimeline");
+      if (!histories || histories.length === 0) {
+        historyTimeline.innerHTML = `
+          <div class="flex items-center gap-2 p-3 bg-slate-50 rounded-xl text-slate-400 text-xs">
+            <i data-lucide="info" class="w-4 h-4"></i>
+            <span>Belum ada revisi jadwal ETA terdeteksi. Data logistik berjalan sesuai rencana awal.</span>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      historyTimeline.innerHTML = "";
+      histories.forEach(h => {
+        const div = document.createElement("div");
+        div.className = "relative pl-6 border-l-2 border-amber-300 text-xs space-y-1";
+        
+        const prevDate = new Date(h.previous_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const revisedDate = new Date(h.revised_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const recordDate = new Date(h.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' });
+
+        div.innerHTML = `
+          <div class="absolute -left-1.5 top-0.5 w-3 h-3 rounded-full bg-amber-500"></div>
+          <div class="flex justify-between font-bold text-slate-700">
+            <span>Perubahan Tanggal ETA</span>
+            <span class="text-[10px] text-slate-400 font-normal">${recordDate}</span>
+          </div>
+          <p class="text-slate-500 font-medium">Revisi dari <span class="line-through text-slate-400">${prevDate}</span> menjadi <span class="text-emerald-700 font-bold">${revisedDate}</span></p>
+          <div class="bg-amber-50 p-2 rounded-lg border border-amber-100 text-slate-600 mt-1">
+            <b>Sebab:</b> ${h.revision_reason}
+          </div>
+        `;
+        historyTimeline.appendChild(div);
+      });
+      lucide.createIcons();
+    }
+
+    function closeDetailModal() {
+      document.getElementById("detailModal").classList.add("hidden");
+    }
+
+    // === LOGIN / AUTH PROCESS ===
+    function openLoginModal() {
+      document.getElementById("loginError").classList.add("hidden");
+      document.getElementById("loginForm").reset();
+      document.getElementById("loginModal").classList.remove("hidden");
+    }
+
+    function closeLoginModal() {
+      document.getElementById("loginModal").classList.add("hidden");
+    }
+
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+      const userVal = document.getElementById("loginUsername").value.trim();
+      const passVal = document.getElementById("loginPassword").value.trim();
+      
+      const errBox = document.getElementById("loginError");
+      errBox.classList.add("hidden");
+
+      if (databaseMode === "demo") {
+        if (userVal === "admin" && passVal === "admin123") {
+          activeUser = { id: 1, username: "admin", name: "Suryanto Pratama" };
+          localStorage.setItem("sam_active_user", JSON.stringify(activeUser));
+          updateUserUI();
+          closeLoginModal();
+          showToast("Berhasil login ke Control Room (Demo Mode)", "check", "bg-emerald-600");
+          fetchData(true);
+        } else {
+          errBox.innerText = "Ekspektasi Login Demo: admin / admin123";
+          errBox.classList.remove("hidden");
+        }
+      } else {
+        // Live Auth API to Spreadsheet
+        fetch(liveApiEndpoint, {
+          method: "POST",
+          mode: "cors",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ action: "login", username: userVal, password: passVal })
+        })
+        .then(res => res.json())
+        .then(res => {
+          if (res.status === "success") {
+            activeUser = res.user;
+            localStorage.setItem("sam_active_user", JSON.stringify(activeUser));
+            localStorage.setItem("sam_session_token", res.token);
+            updateUserUI();
+            closeLoginModal();
+            showToast(`Selamat datang kembali, ${activeUser.name}`, "check", "bg-emerald-600");
+            fetchData(true);
+          } else {
+            errBox.innerText = res.message;
+            errBox.classList.remove("hidden");
+          }
+        })
+        .catch(() => {
+          errBox.innerText = "Gagal tersambung ke server cloud.";
+          errBox.classList.remove("hidden");
+        });
+      }
+    }
+
+    function updateUserUI() {
+      if (activeUser) {
+        document.getElementById("viewerState").classList.add("hidden");
+        document.getElementById("editorState").classList.remove("hidden");
+        document.getElementById("activeUserName").innerText = activeUser.name;
+        document.getElementById("roleBadge").innerText = "Editor / Admin Active";
+        document.getElementById("roleBadge").className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100";
+      } else {
+        document.getElementById("viewerState").classList.remove("hidden");
+        document.getElementById("editorState").classList.add("hidden");
+        document.getElementById("roleBadge").innerText = "Viewer Only";
+        document.getElementById("roleBadge").className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100";
+      }
+    }
+
+    function handleLogout() {
+      activeUser = null;
+      localStorage.removeItem("sam_active_user");
+      localStorage.removeItem("sam_session_token");
+      updateUserUI();
+      showToast("Sesi Control Room diakhiri.", "info", "bg-slate-700");
+      fetchData(true);
+    }
+
+    // === WRITE / EDIT OPERATIONS ===
+    function openOrderModal() {
+      if (!activeUser) {
+        showToast("Hanya operator resmi yang dapat memanipulasi data.", "alert-triangle", "bg-rose-500");
+        return;
+      }
+      
+      document.getElementById("modalTitle").innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-emerald-600"></i> Tambah Order Pelacakan Baru`;
+      document.getElementById("orderForm").reset();
+      document.getElementById("formOrderId").value = "";
+      document.getElementById("formNotes").value = "";
+      
+      // Clear dynamic parts and add default row
+      clearPartRows();
+      addPartRow();
+
+      // Default dates
+      document.getElementById("formOrderDate").value = new Date().toISOString().slice(0, 10);
+      document.getElementById("formCurrentEta").value = "";
+
+      document.getElementById("revisionReasonWrapper").classList.add("hidden");
+      document.getElementById("formRevisionReason").removeAttribute("required");
+
+      lucide.createIcons();
+      document.getElementById("orderModal").classList.remove("hidden");
+    }
+
+    function openEditOrder(orderId, event) {
+      if (event) event.stopPropagation(); // Prevent row click action
+      
+      if (!activeUser) {
+        showToast("Hak akses ditolak. Harap masuk akun terlebih dahulu.", "alert-triangle", "bg-rose-500");
+        return;
+      }
+
+      const order = ordersList.find(o => o.id == orderId);
+      if (!order) return;
+
+      document.getElementById("modalTitle").innerHTML = `<i data-lucide="edit" class="w-5 h-5 text-emerald-600"></i> Edit Transaksi Pengiriman #${order.id}`;
+      document.getElementById("formOrderId").value = order.id;
+      
+      document.getElementById("formUnitId").value = order.unit_id;
+      document.getElementById("formModelUnit").value = order.model_unit;
+      document.getElementById("formNotes").value = order.notes || "";
+      
+      // Populate multiple dynamic parts
+      clearPartRows();
+      if (order.parts && order.parts.length > 0) {
+        order.parts.forEach(p => {
+          addPartRow(p.part_number, p.part_description, p.qty);
+        });
+      } else {
+        addPartRow();
+      }
+
+      document.getElementById("formPriority").value = order.priority;
+      
+      if (order.order_date) {
+        document.getElementById("formOrderDate").value = new Date(order.order_date).toISOString().slice(0, 10);
+      }
+      
+      document.getElementById("formPoNumber").value = order.po_number || "";
+      document.getElementById("formVendorName").value = order.vendor_name || "";
+      document.getElementById("formShippingChannel").value = order.shipping_channel || "Udara";
+      document.getElementById("formResiNumber").value = order.resi_number || "";
+      document.getElementById("formCurrentStatus").value = order.current_status;
+      
+      if (order.current_eta) {
+        // format datetime-local input
+        document.getElementById("formCurrentEta").value = new Date(order.current_eta).toISOString().slice(0, 16);
+      } else {
+        document.getElementById("formCurrentEta").value = "";
+      }
+
+      document.getElementById("revisionReasonWrapper").classList.add("hidden");
+      document.getElementById("formRevisionReason").value = "";
+      document.getElementById("formRevisionReason").removeAttribute("required");
+
+      lucide.createIcons();
+      document.getElementById("orderModal").classList.remove("hidden");
+    }
+
+    function closeOrderModal() {
+      document.getElementById("orderModal").classList.add("hidden");
+    }
+
+    function handleOrderSubmit(e) {
+      e.preventDefault();
+
+      const formId = document.getElementById("formOrderId").value;
+      
+      // Gather dynamic parts
+      const partRows = document.querySelectorAll(".part-item-row");
+      const partsArray = [];
+      partRows.forEach(row => {
+        const partNumber = row.querySelector('[name="part_number"]').value.toUpperCase().trim();
+        const partDesc = row.querySelector('[name="part_description"]').value.trim();
+        const partQty = parseInt(row.querySelector('[name="part_qty"]').value) || 1;
+        partsArray.push({
+          part_number: partNumber,
+          part_description: partDesc,
+          qty: partQty
+        });
+      });
+
+      if (partsArray.length === 0) {
+        showToast("Tambahkan minimal 1 item suku cadang.", "alert-triangle", "bg-rose-500");
+        return;
+      }
+
+      // Legacy fallback attributes for backwards sheet compatibility
+      const primaryPart = partsArray[0];
+
+      const orderPayload = {
+        unit_id: document.getElementById("formUnitId").value.toUpperCase().trim(),
+        model_unit: document.getElementById("formModelUnit").value.trim(),
+        notes: document.getElementById("formNotes").value.trim(),
+        
+        // Dynamic parts serialization
+        parts: databaseMode === "live" ? JSON.stringify(partsArray) : partsArray,
+        
+        // Fallbacks for standard sheets schema
+        part_number: primaryPart.part_number,
+        part_description: primaryPart.part_description,
+        qty: primaryPart.qty,
+
+        priority: document.getElementById("formPriority").value,
+        order_date: document.getElementById("formOrderDate").value,
+        po_number: document.getElementById("formPoNumber").value.toUpperCase().trim(),
+        vendor_name: document.getElementById("formVendorName").value.trim(),
+        shipping_channel: document.getElementById("formShippingChannel").value,
+        resi_number: document.getElementById("formResiNumber").value.toUpperCase().trim(),
+        current_status: document.getElementById("formCurrentStatus").value,
+        current_eta: document.getElementById("formCurrentEta").value
+      };
+
+      if (databaseMode === "demo") {
+        if (formId) {
+          // Edit operation in demo mode
+          const idx = mockOrders.findIndex(o => o.id == formId);
+          if (idx !== -1) {
+            // Check ETA Change trigger
+            const originalEta = mockOrders[idx].current_eta;
+            const newEta = orderPayload.current_eta;
+            
+            if (originalEta && newEta && originalEta !== newEta) {
+              const reason = document.getElementById("formRevisionReason").value.trim() || "Direvisi admin";
+              mockHistory.push({
+                id: mockHistory.length + 1,
+                order_id: Number(formId),
+                previous_eta: originalEta,
+                revised_eta: newEta,
+                revision_reason: reason,
+                user_id: activeUser.id,
+                created_at: new Date().toISOString()
+              });
+            }
+
+            mockOrders[idx] = {
+              ...mockOrders[idx],
+              ...orderPayload,
+              parts: partsArray, // store raw array for demo mode
+              updated_at: new Date().toISOString()
+            };
+            showToast("Perubahan data tersimpan (Demo Mode)", "check", "bg-emerald-600");
+          }
+        } else {
+          // Add operation in demo mode
+          const nextId = mockOrders.length > 0 ? Math.max(...mockOrders.map(o => o.id)) + 1 : 1;
+          const newObj = {
+            id: nextId,
+            ...orderPayload,
+            parts: partsArray, // store raw array for demo mode
+            user_id: activeUser.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          mockOrders.push(newObj);
+          showToast("Pengiriman baru didaftarkan (Demo Mode)", "check", "bg-emerald-600");
+        }
+        closeOrderModal();
+        fetchData(true);
+      } else {
+        // Live Database Operation on Sheets
+        const action = formId ? "update_order" : "create_order";
+        const token = localStorage.getItem("sam_session_token") || "AUTHORIZED_SAM_SESSION";
+        
+        let payload = {
+          action: action,
+          token: token,
+          user_id: activeUser.id
+        };
+
+        if (formId) {
+          payload.order_id = Number(formId);
+          payload.update_data = {
+            ...orderPayload,
+            revision_reason: document.getElementById("formRevisionReason").value.trim()
+          };
+        } else {
+          payload.order_data = orderPayload;
+        }
+
+        fetch(liveApiEndpoint, {
+          method: "POST",
+          mode: "cors",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(res => {
+          if (res.status === "success") {
+            showToast(formId ? "Jalur pengiriman berhasil dimodifikasi." : "Order baru terdaftar di awan.", "check", "bg-emerald-600");
+            closeOrderModal();
+            fetchData(true);
+          } else {
+            showToast("Gagal menyimpan: " + res.message, "x-circle", "bg-rose-600");
+          }
+        })
+        .catch(() => {
+          showToast("Koneksi gagal ke server basis data awan.", "alert-triangle", "bg-rose-600");
+        });
+      }
+    }
+
+    // === COPY TRACKING LINK FUNCTION (CLIPBOARD) ===
+    function copyTrackingLink(orderId, event) {
+      if (event) event.stopPropagation(); // prevent detail card expansion
+
+      // Generate unique hash based on location & ID
+      const origin = window.location.origin + window.location.pathname;
+      const trackingUrl = `${origin}?search=id-${orderId}`;
+      
+      // Fallback for secure iframe constraints
+      const tempInput = document.createElement("input");
+      tempInput.value = trackingUrl;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand("copy");
+      document.body.removeChild(tempInput);
+
+      showToast(`Tautan pelacakan #${orderId} disalin ke papan klip!`, "copy", "bg-emerald-600");
+    }
+
+    // === EXPORT REPORT TO CLEAN TEXT FOR MORNING BRIEFING ===
+    function exportToCleanText() {
+      let exportText = `=======================================\n`;
+      exportText += `  SAM - WAITING PART MONITORING REPORT\n`;
+      exportText += `  Tanggal Cetak: ${new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}\n`;
+      exportText += `=======================================\n\n`;
+
+      const activeParts = filteredOrdersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE");
+      
+      if (activeParts.length === 0) {
+        exportText += `Tidak ada pengiriman part aktif yang terdaftar dalam daftar saringan saat ini.`;
+      } else {
+        activeParts.forEach((o, index) => {
+          const etaDate = new Date(o.current_eta).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' });
+          const statusTxt = o.calculated_status === "DELAYED" ? "TERLAMBAT (DELAYED)" : o.calculated_status;
+          exportText += `${index + 1}. Unit: ${o.unit_id} (${o.model_unit})\n`;
+          if (o.parts && o.parts.length > 0) {
+            o.parts.forEach(p => {
+              exportText += `   - Part: ${p.part_description} [${p.part_number}] (Qty: ${p.qty})\n`;
+            });
+          }
+          exportText += `   Status: [${statusTxt}] | Keterangan: ${o.notes || '-'}\n`;
+          exportText += `   Est Tiba (ETA): ${etaDate}\n\n`;
+        });
+      }
+
+      // Clipboard copy action
+      const tempTextArea = document.createElement("textarea");
+      tempTextArea.value = exportText;
+      document.body.appendChild(tempTextArea);
+      tempTextArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(tempTextArea);
+
+      showToast("Laporan diringkas & disalin ke papan klip untuk WA!", "file-text", "bg-emerald-600");
+    }
+
+    // === NOTIFICATION CONTROL ===
+    function showToast(message, iconName = "info", bgColor = "bg-slate-700") {
+      const toast = document.getElementById("toastNotification");
+      const iconContainer = document.getElementById("toastIconBg");
+      const msgContainer = document.getElementById("toastMessage");
+
+      msgContainer.innerText = message;
+      iconContainer.className = `p-1.5 rounded-lg text-white ${bgColor}`;
+      iconContainer.innerHTML = `<i data-lucide="${iconName}" class="w-4 h-4"></i>`;
+
+      lucide.createIcons();
+
+      // Animate slide-in-up
+      toast.className = "fixed bottom-6 right-6 bg-white text-slate-800 py-3.5 px-5 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-100 opacity-100 transform translate-y-0 transition-all duration-300 z-50 pointer-events-auto";
+
+      setTimeout(() => {
+        toast.className = "fixed bottom-6 right-6 bg-white text-slate-800 py-3.5 px-5 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-100 opacity-0 transform translate-y-12 transition-all duration-300 z-50 pointer-events-none";
+      }, 4000);
+    }
+  </script>
+</body>
+</html>
