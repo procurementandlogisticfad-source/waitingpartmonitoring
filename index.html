@@ -992,7 +992,7 @@
 
     function renderKPIs() {
       const openStatuses = ["WAITING_QUOTATION", "WAITING_SUPPLY", "NO_PR", "NO_PO"];
-      const progressStatuses = ["PO_UNRELEASED", "IN_TRANSIT", "ARRIVED_AT_HUB", "ARRIVED_AT_SITE", "RECEIVED_BY_MECHANIC"];
+      const progressStatuses = ["PO_UNRELEASED", "IN_TRANSIT", "ARRIVED_AT_HUB", "ARRIVED_AT_SITE"];
 
       const totalActive = ordersList.filter(o => o.calculated_status !== "ARRIVED_AT_SITE" && o.calculated_status !== "RECEIVED_BY_MECHANIC").length;
       const totalOpen = ordersList.filter(o => openStatuses.includes(o.current_status)).length;
